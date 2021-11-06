@@ -11,6 +11,9 @@ namespace CreaterGraphs {
         List<Label> vertex = new List<Label>();
         Dictionary<TextBox, List<Label>> line = new Dictionary<TextBox, List<Label>>();
 
+        int[,] matrixLenght = null;
+        int[] lenghtPathVertex = null;
+
         Label previosClickedCircle = null;
 
         Color keyPressed = Color.Blue;
@@ -23,18 +26,22 @@ namespace CreaterGraphs {
         bool isDelete = false;
         bool isFindShortestPath = false;
 
-        enum isCheckedVertex {
-            NO,
-            YES
-        }
-
-        const int PATH_LENGHT = 0;
-        const int CHECKED_VERTEX = 1;
+        const int BIG_VALUE = 2147483647;
 
         public Form1() {
 
             InitializeComponent();
             pictureBox.BackColor = Color.White;
+
+            matrixDataGridView.AllowUserToAddRows = false;
+            matrixDataGridView.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            matrixDataGridView.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            matrixDataGridView.RowHeadersWidth = 50;
+
+            lenghtPathDataGridView.AllowUserToAddRows = false;
+            lenghtPathDataGridView.RowHeadersVisible = false;
+            lenghtPathDataGridView.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            lenghtPathDataGridView.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         }
 
 
@@ -86,30 +93,79 @@ namespace CreaterGraphs {
 
             if (isFindShortestPath && !isMouseMovedLabel) {
                 Label vertexClicked = (Label)sender;
-                const int BIG_VALUE = 2147483647;
 
-                if (previosClickedCircle == null || previosClickedCircle == vertexClicked) {
-                    previosClickedCircle = vertexClicked;
-                    previosClickedCircle.BackColor = keyPressed;
-                    vertexClicked.BackColor = keyPressed;
-                    return;
+                matrixLenght = fillMatrixLenght();
+                lenghtPathVertex = fillLenghtPathVertex(vertexClicked.TabIndex, vertex.Count);
+                findShortestPath(vertexClicked.TabIndex, vertex.Count);
+
+                if(matrixDataGridView.Columns.Count > 0) {
+                    while (matrixDataGridView.Rows.Count > 0) {
+                        matrixDataGridView.Rows.RemoveAt(0);
+                        matrixDataGridView.Columns.RemoveAt(0);
+                    }
+                    
                 }
 
-                int[,] matrixLenght = fillMatrixLenght();
-                int[,] matrixReachability = fillMatrixReachability();
-                int[,] lenghtPathVertex = fillLenghtPathVertex(previosClickedCircle.TabIndex, vertexClicked.TabIndex);
-
-                lenghtPathVertex = findShortestPath(lenghtPathVertex, matrixLenght, previosClickedCircle.TabIndex, vertexClicked.TabIndex);
-
-                if (lenghtPathVertex[vertexClicked.TabIndex, 0] != BIG_VALUE) {
-                    shortestPathTextBox.Text = lenghtPathVertex[vertexClicked.TabIndex, 0].ToString();
-                } else {
-                    shortestPathTextBox.Text = (0).ToString();
+                for (int i = 0; i < lenghtPathVertex.Length; i++) {
+                    matrixDataGridView.Columns.Add(i.ToString(), (i + 1).ToString());
+                    
+                    matrixDataGridView.Rows.Add();
+                    matrixDataGridView.Rows[i].HeaderCell.Value = (i + 1).ToString();
                 }
 
-                previosClickedCircle.BackColor = keyReleased;
-                vertexClicked.BackColor = keyReleased;
-                previosClickedCircle = null;
+                for (int i = 0; i < lenghtPathVertex.Length; i++) {
+                    for (int j = 0; j < lenghtPathVertex.Length; j++) {
+
+                        if (matrixLenght[i, j] >= 0) {
+                            matrixDataGridView.Rows[i].Cells[j].Value = matrixLenght[i, j];
+                        } else {
+                            matrixDataGridView.Rows[i].Cells[j].Value = "-";
+                        }
+
+                    }
+                }
+
+                int width = (matrixDataGridView.Width - matrixDataGridView.RowHeadersWidth) / lenghtPathVertex.Length;
+                int height = (matrixDataGridView.Height - matrixDataGridView.ColumnHeadersHeight) / lenghtPathVertex.Length;
+
+                for (int i = 0; i < lenghtPathVertex.Length; i++) {
+                    matrixDataGridView.Columns[i].Width = width;
+                    matrixDataGridView.Rows[i].Height = height;
+                }
+
+                if (lenghtPathDataGridView.Columns.Count > 0) {
+
+                    while (lenghtPathDataGridView.Columns.Count > 0) {
+                        lenghtPathDataGridView.Columns.RemoveAt(0);
+                    }
+
+                }
+
+                for (int i = 0; i < lenghtPathVertex.Length; i++) {
+                    lenghtPathDataGridView.Columns.Add(i.ToString(), (i + 1).ToString());
+
+                    if(i == 0) {
+                        lenghtPathDataGridView.Rows.Add();
+                    }
+
+                    if (lenghtPathVertex[i] < BIG_VALUE) {
+                        lenghtPathDataGridView.Rows[0].Cells[i].Value = lenghtPathVertex[i];
+                    } else {
+                        lenghtPathDataGridView.Rows[0].Cells[i].Value = "-";
+                    }
+                }
+
+                if (lenghtPathDataGridView.Width > lenghtPathDataGridView.Columns[0].Width * lenghtPathDataGridView.Columns.Count) {
+                    width = lenghtPathDataGridView.Width / lenghtPathVertex.Length;
+
+                    for (int i = 0; i < lenghtPathVertex.Length; i++) {
+                        lenghtPathDataGridView.Columns[i].Width = width;
+                    }
+                }
+
+                 height = lenghtPathDataGridView.Height - lenghtPathDataGridView.ColumnHeadersHeight - 15;
+                 lenghtPathDataGridView.Rows[0].Height = height;
+
             }
 
             isMouseMovedLabel = false;
@@ -175,7 +231,7 @@ namespace CreaterGraphs {
 
             for (int i = index; i < vertex.Count; i++) {
                 vertex[i].Text = Convert.ToString((i + 1));
-                vertex[i].TabIndex = (i + 1);
+                vertex[i].TabIndex = i ;
             }
         }
 
@@ -292,17 +348,15 @@ namespace CreaterGraphs {
             isAddLine = false;
             isDelete = false;
             isFindShortestPath = true;
-
-            previosClickedCircle = null;
         }
 
 
         private int[,] fillMatrixLenght() {
-            int[,] matrix = new int[vertex.Count, vertex.Count];
+            int[,] newMatrix = new int[vertex.Count, vertex.Count];
 
             for (int i = 0; i < vertex.Count; i++) {
                 for (int j = 0; j < vertex.Count; j++) {
-                    matrix[i, j] = -1;
+                    newMatrix[i, j] = -1;
                 }
             }
 
@@ -310,61 +364,37 @@ namespace CreaterGraphs {
                 int vertexIndex1 = line[item][0].TabIndex;
                 int vertexIndex2 = line[item][1].TabIndex;
 
-                matrix[vertexIndex1, vertexIndex2] = Convert.ToInt32(item.Text);
-                matrix[vertexIndex2, vertexIndex1] = Convert.ToInt32(item.Text);
+                newMatrix[vertexIndex1, vertexIndex2] = Convert.ToInt32(item.Text);
+                newMatrix[vertexIndex2, vertexIndex1] = Convert.ToInt32(item.Text);
             }
 
-            return matrix;
+            return newMatrix;
         }
 
-        private int[,] fillMatrixReachability() {
-            int[,] matrix = new int[vertex.Count, vertex.Count];
+        private int[] fillLenghtPathVertex(int startVertex, int count) {
+            int[] newLenghtPathVertex = new int[count];
 
-            for (int i = 0; i < vertex.Count; i++) {
-                for (int j = 0; j < vertex.Count; j++) {
-                    matrix[i, j] = 0;
-                }
+            for (int i = 0; i < count; i++) {
+                newLenghtPathVertex[i] = BIG_VALUE;
             }
 
-            foreach (TextBox item in line.Keys) {
-                int vertexIndex1 = line[item][0].TabIndex;
-                int vertexIndex2 = line[item][1].TabIndex;
+            newLenghtPathVertex[startVertex] = 0;
 
-                matrix[vertexIndex1, vertexIndex2] = 1;
-                matrix[vertexIndex2, vertexIndex1] = 1;
-            }
-
-            return matrix;
+            return newLenghtPathVertex;
         }
 
-        private int[,] fillLenghtPathVertex(int startVertex, int endVertex) {
-            int[,] lenghtPathVertex = new int[vertex.Count, 2];
+        private void findShortestPath(int startVertex, int count) {
 
-            const int BIG_VALUE = 2147483647;
+            for (int i = 0; i < count; i++) {
 
-            for (int i = 0; i < vertex.Count; i++) {
-                lenghtPathVertex[i, PATH_LENGHT] = BIG_VALUE;
-                lenghtPathVertex[i, CHECKED_VERTEX] = ((int)isCheckedVertex.NO);
-            }
+                if( (matrixLenght[startVertex, i] > -1) && (lenghtPathVertex[i] > (matrixLenght[startVertex, i] + lenghtPathVertex[startVertex])) ) {
 
-            lenghtPathVertex[startVertex, PATH_LENGHT] = 0;
+                    lenghtPathVertex[i] = matrixLenght[startVertex, i] + lenghtPathVertex[startVertex];
 
-            return lenghtPathVertex;
-        }
-
-        private int[,] findShortestPath(int[,] lenghtPathVertex, int[,] matrix, int startVertex, int endVertex) {
-            for (int i = 0; i < vertex.Count; i++) {
-
-                if( (matrix[startVertex, i] > -1) && (lenghtPathVertex[i, 0] > (matrix[startVertex, i] + lenghtPathVertex[startVertex, 0])) ) {
-
-                    lenghtPathVertex[i, 0] = matrix[startVertex, i] + lenghtPathVertex[startVertex, 0];
-
-                    lenghtPathVertex = findShortestPath(lenghtPathVertex, matrix, i, endVertex);
+                    findShortestPath(i, count);
                 }
 
             }
-
-            return lenghtPathVertex;
         }
 
 
@@ -386,6 +416,140 @@ namespace CreaterGraphs {
                 }
             }
 
+        }
+
+
+
+        private void countColumnNumericUpDown_ValueChanged(object sender, EventArgs e) {
+            NumericUpDown num = (NumericUpDown)sender;
+            int count = Convert.ToInt32(num.Value);
+
+            if (matrixDataGridView.Columns.Count < num.Value) {
+                
+                for (int i = matrixDataGridView.Columns.Count; i < count; i++) {
+                    string name = i.ToString();
+                    string header = (i + 1).ToString();
+                    matrixDataGridView.Columns.Add(name, header);
+
+                    matrixDataGridView.Rows.Add();
+                    matrixDataGridView.Rows[i].HeaderCell.Value = (i + 1).ToString();
+                }
+
+            }
+
+            if (matrixDataGridView.Columns.Count > num.Value && num.Value > 0 ) {
+
+                for (int i = matrixDataGridView.Columns.Count - 1; i >= count; i--) {
+                    matrixDataGridView.Columns.RemoveAt(i);
+                    matrixDataGridView.Rows.RemoveAt(i);
+                }
+
+            }
+
+            if (num.Value > 0) {
+                int width = (matrixDataGridView.Width - matrixDataGridView.RowHeadersWidth) / count;
+                int height = (matrixDataGridView.Height - matrixDataGridView.ColumnHeadersHeight) / count;
+
+                for (int i = 0; i < count; i++) {
+                    matrixDataGridView.Columns[i].Width = width;
+                    matrixDataGridView.Rows[i].Height = height;
+                }
+            }
+
+            numericUpDown1.Maximum = count;
+
+        }
+
+        private void shortestPathTableButton_Click(object sender, EventArgs e) {
+
+            if (countColumnNumericUpDown.Value > 0) {
+
+                
+                    matrixLenght = new int[matrixDataGridView.Columns.Count, matrixDataGridView.Columns.Count];
+
+                    for (int i = 0; i < matrixDataGridView.Columns.Count; i++) {
+                        for (int j = 0; j < matrixDataGridView.Rows.Count; j++) {
+                            try {
+
+                                if (i != j && matrixDataGridView.Rows[i].Cells[j].Value != null) {
+                                    matrixLenght[i, j] = Convert.ToInt32(matrixDataGridView.Rows[i].Cells[j].Value);
+                                } else {
+                                    matrixLenght[i, j] = -1;
+                                }
+
+                            } catch {
+                                matrixLenght[i, j] = -1;
+                            }
+                        }
+                    }
+
+                try {
+                    lenghtPathVertex = fillLenghtPathVertex(Convert.ToInt32(numericUpDown1.Value - 1), matrixDataGridView.Columns.Count);
+                    findShortestPath(Convert.ToInt32(numericUpDown1.Value - 1), matrixDataGridView.Columns.Count);
+
+                    if (lenghtPathDataGridView.Columns.Count > 0) {
+
+                        while (lenghtPathDataGridView.Columns.Count > 0) {
+                            lenghtPathDataGridView.Columns.RemoveAt(0);
+                        }
+
+                    }
+
+                    for (int i = 0; i < lenghtPathVertex.Length; i++) {
+                        lenghtPathDataGridView.Columns.Add(i.ToString(), (i + 1).ToString());
+
+                        if (i == 0) {
+                            lenghtPathDataGridView.Rows.Add();
+                        }
+
+                        if (lenghtPathVertex[i] < BIG_VALUE) {
+                            lenghtPathDataGridView.Rows[0].Cells[i].Value = lenghtPathVertex[i];
+                        } else {
+                            lenghtPathDataGridView.Rows[0].Cells[i].Value = "-";
+                        }
+                    }
+
+                    if (lenghtPathDataGridView.Width > lenghtPathDataGridView.Columns[0].Width * lenghtPathDataGridView.Columns.Count) {
+                       int width = lenghtPathDataGridView.Width / lenghtPathVertex.Length;
+
+                        for (int i = 0; i < lenghtPathVertex.Length; i++) {
+                            lenghtPathDataGridView.Columns[i].Width = width;
+                        }
+                    }
+
+                    int height = lenghtPathDataGridView.Height - lenghtPathDataGridView.ColumnHeadersHeight - 15;
+                    lenghtPathDataGridView.Rows[0].Height = height;
+
+                } catch { }
+
+            }
+            
+        }
+
+        private void cleanTableButton_Click(object sender, EventArgs e) {
+            for (int i = 0; i < matrixDataGridView.Columns.Count; i++) {
+                for (int j = 0; j < matrixDataGridView.Rows.Count; j++) {
+                    matrixDataGridView.Rows[i].Cells[j].Value = "";
+                }
+            }
+        }
+
+        private void deleteTableButton_Click(object sender, EventArgs e) {
+            while (matrixDataGridView.Rows.Count > 0) {
+                matrixDataGridView.Rows.RemoveAt(0);
+                matrixDataGridView.Columns.RemoveAt(0);
+            }
+        }
+
+        private void changedCell_gridView(object sender, DataGridViewCellEventArgs e) {
+            try {
+                matrixDataGridView.Rows[e.ColumnIndex].Cells[e.RowIndex].Value = matrixDataGridView.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
+
+                if(e.ColumnIndex == e.RowIndex) {
+                    matrixDataGridView.Rows[e.ColumnIndex].Cells[e.RowIndex].Value = "";
+                }
+
+            } catch { }
         }
 
     }
