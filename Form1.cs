@@ -13,6 +13,7 @@ namespace CreaterGraphs {
 
         int[,] matrixLenght = null;
         int[] lenghtPathVertex = null;
+        string[] minPath;
 
         Label previosClickedCircle = null;
 
@@ -144,11 +145,12 @@ namespace CreaterGraphs {
                 for (int i = 0; i < lenghtPathVertex.Length; i++) {
                     lenghtPathDataGridView.Columns.Add(i.ToString(), (i + 1).ToString());
 
-                    if(i == 0) {
+                    if (i == 0) {
                         lenghtPathDataGridView.Rows.Add();
                     }
 
                     if (lenghtPathVertex[i] < BIG_VALUE) {
+                        lenghtPathDataGridView.Columns[i].HeaderText = lenghtPathDataGridView.Columns[i].HeaderText + " (" + minPath[i] + ")";
                         lenghtPathDataGridView.Rows[0].Cells[i].Value = lenghtPathVertex[i];
                     } else {
                         lenghtPathDataGridView.Rows[0].Cells[i].Value = "-";
@@ -373,22 +375,28 @@ namespace CreaterGraphs {
 
         private int[] fillLenghtPathVertex(int startVertex, int count) {
             int[] newLenghtPathVertex = new int[count];
+            minPath = new string[vertex.Count];
+
+            for (int i = 0; i < vertex.Count; i++) {
+                minPath[i] = (startVertex + 1).ToString();
+            }
 
             for (int i = 0; i < count; i++) {
                 newLenghtPathVertex[i] = BIG_VALUE;
             }
 
             newLenghtPathVertex[startVertex] = 0;
-
+            
             return newLenghtPathVertex;
         }
-
+        
         private void findShortestPath(int startVertex, int count) {
 
             for (int i = 0; i < count; i++) {
 
                 if( (matrixLenght[startVertex, i] > -1) && (lenghtPathVertex[i] > (matrixLenght[startVertex, i] + lenghtPathVertex[startVertex])) ) {
 
+                    minPath[i] = minPath[startVertex] + "-" + (i + 1).ToString();
                     lenghtPathVertex[i] = matrixLenght[startVertex, i] + lenghtPathVertex[startVertex];
 
                     findShortestPath(i, count);
